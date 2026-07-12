@@ -974,3 +974,10 @@ vue的生命周期包含8个阶段：每触发一个生命周期事件，会自�
 | updated       | 更新后   |
 | beforeDestroy | 销毁前   |
 | destroyed     | 销毁后   |
+
+
+
+
+
+# Vue工程化
+

@@ -1327,3 +1327,162 @@ t1.setDaemon(true);//设置这个线程为守护线程
 
 
 
+
+
+
+
+# 反射
+
+反射就是把Java类中的各个成分映射成一个个Java对象，即在运行状态中，对于一个类，都能知道这个类的所有属性和方法，对于任意一个对象，都能调用它的任意一个方法和属性，这种动态获取信息及动态调用对象方法的功能叫Java的反射机制
+
+## class类与多态
+
+判断是否为子类或者接口/抽象类的实现
+
+```java
+Integer.class.asSubclass(Number.class);
+```
+
+
+
+## 获取class对象
+
+```java
+Class<String> clazz=String.class;
+Class<?> clazz1 = Class.forName("java.lang.String");
+Class<?> clazz2 = "".getClass();
+```
+
+ps:包装类的类对象和基本数据类型的类对象不是一个
+
+```java
+System.out.println(Integer.class == int.class); // false
+```
+
+
+
+## 获取构造方法
+
+```java
+Constructor[] constructors = clazz.getConstructors();//返回所有公共构造方法对象的数组
+Constructor[] constructors = clazz.getDeclaredConstructors();//返回所有构造方法对象的数组
+Constructor constructor = clazz.getConstructor();//返回单个公共构造方法对象
+Constructor constructor = clazz.getDeclaredConstructor();//返回单个构造方法对象
+
+Constructor constructor = clazz.getDeclaredConstructor(String.class);
+constructor.setAccessible(true);
+String s=(String) constructor.newInstance("111");
+//使用构造方法生成对象
+```
+
+
+
+## 获取成员变量
+
+```java
+Field[]fields=clazz.getFields();//返回所有公共成员变量的数组
+Field[]fields=clazz.getDeclaredFields();//返回所有成员变量的数组
+Field field=clazz.getField("id");//返回单个公共成员变量对象
+Field field=clazz.getDeclaredField("id");//返回单个成员变量对象
+
+
+//获取成员变量的名字
+int modifiers = field.getModifiers();
+
+//获取成员变量数据类型
+Class<?> type = field.getType();
+
+//获取成员变量记录的值
+Student s=new Student("111",1);
+field.setAccessible(true);
+String value =(String)field.get(s);
+
+//修改对象里面记录的值
+field.set(s,"222");
+```
+
+
+
+## 获取成员方法
+
+```java
+Method[] methods = clazz.getMethods();//返回所有公共成员方法对象的数组，包括继承的
+Method[] methods = clazz.getDeclaredMethods();//返回所有成员方法对象的数组，不包括继承的
+Method method = clazz.getMethod("func1");//返回单个公共成员方法对象
+Method method = clazz.getDeclaredMethod("func1");//返回单个成员方法对象
+
+//获取方法修饰符
+int modifiers = method.getModifiers();
+
+//获取方法名字
+String name=method.getName();
+
+//获取方法的形参
+Parameter[] parameters = method.getParameters();
+
+//获取方法抛出的异常
+Class<?>[] exceptionTypes = method.getExceptionTypes();
+
+Student s=new Student("111",11);
+method.setAccessible(true);
+
+//方法调用
+method.invoke(s,1);
+```
+
+
+
+
+
+# 动态代理
+
+代理可以无侵入的给对象增强其他功能
+
+```java
+package com.creep;
+
+public interface Star {
+    public String sing(String name);
+    public void dance();
+}
+//Star
+package com.creep;
+
+public class BigStar implements Star{
+    private String name;
+    BigStar(String _name){
+        this.name=_name;
+    }
+    @Override
+    public String sing(String name) {
+        System.out.println(this.name+"正常唱"+name);
+        return "谢谢";
+    }
+
+    @Override
+    public void dance() {
+        System.out.println(this.name+"正在跳舞");
+    }
+}
+//BigStar
+package com.creep;
+
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+
+public class ProxyUtil {
+
+    public static Star createProxy(BigStar bigStar){
+        Star s = (Star)Proxy.newProxyInstance(ProxyUtil.class.getClassLoader(), new Class[]{Star.class}, new InvocationHandler() {
+            @Override
+            public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+                return method.invoke(bigStar, args);
+            }
+        });
+        return s;
+    }
+}
+//ProxyUtil
+```
+

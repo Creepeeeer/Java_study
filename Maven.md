@@ -324,3 +324,223 @@ public void test(int num){
 </dependency>
 ```
 
+
+
+
+
+# 分模块设计
+
+将一个大项目拆分成若干个子模块，方便项目的管理维护
+
+**策略**
+
+- 按照功能模块拆分，比如：公共组件，商品模块，搜索模块，购物车模块，订单模块等
+- 按层拆分，比如：公共组件，实体类，控制层，业务层，数据访问层
+- 按照功能模块+层拆分
+
+
+
+
+
+# 继承
+
+- 概念：继承描述的是两个工程间的关系，与Java中继承相似，子工程可以继承父工程中的配置信息，常见于依赖关系的继承
+
+- 作用：简化依赖配置，统一管理依赖
+
+- 实现：
+
+  ```java
+  <parent>...</parent>
+  ```
+
+## 继承关系实现
+
+1. 创建maven模块 tlias-parent，该工程为父工程，设置打包方式pom(默认为jar)
+
+- jar：普通模块打包，springboot项目基本都是jar包(内嵌tomcat运行)
+- war：普通web程序打包，需要部署在外部的tomcat服务器中运行
+- pom：父工程或聚合工程，该模块不写代码，仅进行依赖管理
+
+2. 在子工程的pom.xml文件中，配置继承关系
+3. 在父工程中配置各个工程共有的依赖(子工程会自动继承父工程的依赖)
+
+**ps:**
+
+- 在子工程中，配置了继承关系之后，坐标中的groupId是可以省略的，因为会自动继承父工程的
+- relativePath指定父工程的pom文件的相对位置(如果不指定，将从本地仓库/远程仓库查找)
+- 若父子工程都配置了同一个依赖的不同版本，以子工程为准
+
+
+
+
+
+## 版本锁定
+
+在maven中，可以在父工程的pom文件中通过`<dependencyManagement>`来统一管理版本
+
+`<dependencyManagement>`是统一管理依赖版本，不会直接依赖，还需要在子工程中引入所需依赖(无需指定版本)
+
+父工程
+
+```xml
+<!--    统一管理依赖的版本-->
+    <dependencyManagement>
+        <dependencies>
+            <!--阿里云OSS依赖-->
+            <dependency>
+                <groupId>com.aliyun.oss</groupId>
+                <artifactId>aliyun-sdk-oss</artifactId>
+                <version>3.18.4</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+```
+
+子工程
+
+```xml
+    <dependencies>
+        <!--阿里云OSS依赖-->
+        <dependency>
+            <groupId>com.aliyun.oss</groupId>
+            <artifactId>aliyun-sdk-oss</artifactId>
+           <!-- 此时子工程中不需要指定版本号-->
+        </dependency>
+    </dependencies>
+```
+
+
+
+
+
+## 自定义属性
+
+通过自定义属性将版本号抽取出来，方便修改
+
+```xml
+<properties>
+<lombok.version>1.18.34</lombok.version>
+</properties>
+
+<dependencies>
+    <dependency>
+        <groupId>org.projectlombok</groupId>
+        <artifactId>lombok</artifactId>
+        <version>${lombok.version}</version>
+        <optional>true</optional>
+    </dependency>
+</dependencies>
+```
+
+
+
+
+
+
+
+# 聚合
+
+- 聚合：将多个模块组织成一个整体，同时进行项目的构建
+
+- 聚合工程：一个不具有业务功能的空工程(有且仅有一个pom文件)
+- 作用：快速构建项目(无需根据依赖关系手动构建，直接聚合工程上构建即可)
+- 实现：maven中可以通过`<modules>`设置当前聚合工程所包含的子模块名称
+
+ps:聚合工程所包含的模块，在构建时，会自动根据模块间的依赖关系设置构建顺序，与聚合工程中模块的配置书写位置无关
+
+父工程.xml
+
+```xml
+<!--    聚合哪些模块-->
+    <modules>
+        <module>../tlias-pojo</module>
+        <module>../tlias-utils</module>
+        <module>../tlias-web-management</module>
+    </modules>
+```
+
+
+
+
+
+# 私服
+
+私服是一种特殊的远程仓库，它是假设在局域网内的仓库服务，用来代理位于外部的中央仓库，用于解决团队内部的资源共享和资源同步问题
+
+依赖查找顺序
+
+1. 本地仓库
+2. 私服
+3. 中央仓库
+
+## 资源上传与下载
+
+**1. 设置私服的访问用户名/密码（在自己maven安装目录下的****`conf/settings.xml`****中的servers中配置）**
+
+```XML
+<server>
+    <id>maven-releases</id>
+    <username>admin</username>
+    <password>admin</password>
+</server>
+    
+<server>
+    <id>maven-snapshots</id>
+    <username>admin</username>
+    <password>admin</password>
+</server>
+```
+
+**2. 设置私服依赖下载的仓库组地址（在自己maven安装目录下的****`conf/settings.xml`****中的mirrors中配置）**
+
+```XML
+<mirror>
+    <id>maven-public</id>
+    <mirrorOf>*</mirrorOf>
+    <url>http://localhost:8081/repository/maven-public/</url>
+</mirror>
+```
+
+**3.** **设置私服依赖下载的仓库组地址（在自己maven安装目录下的****`conf/settings.xml`****中的profiles中配置）**
+
+```XML
+<profile>
+    <id>allow-snapshots</id>
+    <activation>
+        <activeByDefault>true</activeByDefault>
+    </activation>
+    <repositories>
+        <repository>
+            <id>maven-public</id>
+            <url>http://localhost:8081/repository/maven-public/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+</profile>
+```
+
+**4. IDEA的maven工程的pom文件中配置上传（发布）地址(直接在****`tlias-parent`****中配置发布地址)**
+
+```XML
+<distributionManagement>
+    <!-- release版本的发布地址 -->
+    <repository>
+        <id>maven-releases</id>
+        <url>http://localhost:8081/repository/maven-releases/</url>
+    </repository>
+    <!-- snapshot版本的发布地址 -->
+    <snapshotRepository>
+        <id>maven-snapshots</id>
+        <url>http://localhost:8081/repository/maven-snapshots/</url>
+    </snapshotRepository>
+</distributionManagement>
+```
+
+配置完成之后，我们就可以在`tlias-parent`中执行**deploy**生命周期，将项目发布到私服仓库中。 
+
